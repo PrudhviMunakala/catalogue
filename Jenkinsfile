@@ -6,6 +6,8 @@ pipeline {
     }
     environment {
         appVersion = ""
+        AWS_ACCOUNT_ID = "534409839269"
+        region = "us-east-1"
     }
         stages {
                 stage('Read version') {
@@ -30,11 +32,15 @@ pipeline {
                 }
                 stage('Build Image') {
                     steps {
-                        sh """
-                            docker build -t catalogue:${appVersion} .
-                            
-                          """
-                    }
+                        // Use the withAWS block to inject credentials and region
+                        withAWS(credentials: 'aws-cred', region: "${env.region}") {
+                            sh """
+                            aws ecr get-login-password --region ${env.region} | docker login --username AWS --password-stdin ${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.region}.amazonaws.com
+                                docker build -t ${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.region}.amazonaws.com/roboshop-catalogue:${appVersion} .
+                                docker push ${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.region}.amazonaws.com/roboshop-catalogue:${appVersion}
+                            """
+                }
+            }
                 }
                 stage('test') {
                     steps {

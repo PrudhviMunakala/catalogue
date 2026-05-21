@@ -40,6 +40,13 @@ pipeline {
                     }
                   }
             }
+                stage('Quality Gate') {
+                    steps {
+                        timeout(time: 1, unit: 'HOURS') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+        }
                 stage('Build Image') {
                     steps {
                         // Use the withAWS block to inject credentials and region

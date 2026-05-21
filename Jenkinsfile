@@ -38,7 +38,8 @@ pipeline {
                                 sh "${scannerHome}/bin/sonar-scanner"
                             }
                     }
-                }
+                  }
+            }
                 stage('Build Image') {
                     steps {
                         // Use the withAWS block to inject credentials and region
@@ -48,14 +49,10 @@ pipeline {
                                 docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion} .
                                 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                             """
-                }
-            }
-                }
-                stage('test') {
-                    steps {
-                        echo "test success"
                     }
-                }
+                 }
+           }
+                
         
     }
 }

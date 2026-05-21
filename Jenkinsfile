@@ -1,7 +1,7 @@
 pipeline {
     agent {
         node {
-            label 'roboshop-agent'
+            label 'roboshop'
         }
     }
     environment {

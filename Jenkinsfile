@@ -138,18 +138,7 @@ pipeline {
                     }
                 }
             }
-            post {                    // ← sibling of steps, correct placement
-                always {
-                    publishHTML(target: [
-                        allowMissing         : false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll              : true,
-                        reportDir            : '.',
-                        reportFiles          : 'trivy-report.html',
-                        reportName           : 'Trivy Security Report'
-                    ])
-                }
-            }
+           
         }
 
         stage('Push Image') {         // ← renamed from 'Build Image' to 'Push Image'

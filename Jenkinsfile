@@ -122,11 +122,72 @@ pipeline {
         } */
                 stage('Build Image') {
                     steps {
+                            sh """
+                                docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion} .
+
+                            """
+                     }
+           }
+           stage('Trivy Image Scan') {
+                    steps {
+                        script {
+                            def imageName = "${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}"
+                            
+                            // Step 1: Generate HTML report (exit-code 0 — always runs, never fails here)
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --vuln-type os \
+                                    --exit-code 0 \
+                                    --quiet \
+                                    --format template \
+                                    --template "@/usr/local/share/trivy/templates/html.tpl" \
+                                    --output trivy-report.html \
+                                    ${imageName}
+                            """
+
+                            // Step 2: Fail the pipeline if HIGH/CRITICAL vulnerabilities found
+                            def trivyExitCode = sh(
+                                script: """
+                                    trivy image \
+                                        --severity HIGH,CRITICAL \
+                                        --vuln-type os \
+                                        --exit-code 1 \
+                                        --quiet \
+                                        ${imageName}
+                                """,
+                                returnStatus: true   // captures exit code instead of throwing exception
+                            )
+
+                            if (trivyExitCode == 1) {
+                                error("❌ Trivy scan FAILED: HIGH or CRITICAL OS vulnerabilities found. Check the Trivy Security Report for details.")
+                            } else {
+                                echo "✅ Trivy scan PASSED: No HIGH or CRITICAL OS vulnerabilities found."
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            // Publish HTML report regardless of pass or fail
+                            publishHTML(target: [
+                                allowMissing         : false,
+                                alwaysLinkToLastBuild: true,
+                                keepAll              : true,
+                                reportDir            : '.',
+                                reportFiles          : 'trivy-report.html',
+                                reportName           : 'Trivy Security Report'
+                            ])
+                        }
+                    }
+}
+    
+}
+           stage('Build Image') {
+                    steps {
                         // Use the withAWS block to inject credentials and region
                         withAWS(credentials: 'aws-creds', region: "${region}") {
                             sh """
                             aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com
-                                docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion} .
                                 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
                             """
                     }
